@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "per3clock"
+version = "0.1.0"
+description = "Does PER3 genotype (4/4 vs 5/5) shift the timing of clock-gene expression in human blood? (GSE39445)"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "PER3 Clock Timing group" }]
+dependencies = [
+    "pandas>=2.1",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "statsmodels>=0.14",
+    "matplotlib>=3.8",
+    "seaborn>=0.13",
+    "scikit-learn>=1.3",
+    "GEOparse>=2.0.4",
+    "six>=1.16",          # GEOparse 2.0.4 imports six but does not declare it
+    "gseapy>=1.1",
+    "networkx>=3.2",
+    "requests>=2.31",
+    "nbformat>=5.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+    "nbclient>=0.10",
+    "ipykernel>=6.29",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+    "network: needs internet / large downloads (deselect with -m 'not network')",
+    "slow: slow tests (e.g. executing notebooks)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["notebooks"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
