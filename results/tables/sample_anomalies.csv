@@ -1,0 +1,5 @@
+sample_id,subject,condition,timepoint,clock_time,circadian_phase_h,hours_awake,issue
+GSM969076,AF0182,SE,T4,2:25,-3.0,16.5,clock_time - circadian_phase differs from series median by -2.00 h; clock-time gap from previous sample 4.00 h (expected ~3 h)
+GSM969077,AF0182,SE,T5,4:25,-3.0,19.5,clock-time gap from previous sample 2.00 h (expected ~3 h)
+GSM969096,AF0186,SE,T8,14:12,9.0,28.5,clock-time gap from previous sample 3.70 h (expected ~3 h)
+GSM969231,AF0318,SE,T10,18:10,15.0,34.5,clock-time gap from previous sample 3.67 h (expected ~3 h)
