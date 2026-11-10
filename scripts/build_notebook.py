@@ -81,6 +81,9 @@ def build(stages_dir: Path = STAGES_DIR) -> nbformat.NotebookNode:
             if tags:
                 new.metadata["tags"] = tags
             out.cells.append(new)
+    # deterministic cell ids so rebuilding an unchanged notebook gives an identical file
+    for n, cell in enumerate(out.cells):
+        cell["id"] = f"cell-{n:03d}"
     nbformat.validate(out)
     return out
 
