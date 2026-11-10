@@ -113,30 +113,50 @@ Saved to `results/tables/timepoints_per_subject.csv`.
 - SE-only subjects: AF0186, AF0295
 - SR-only subjects: AF0079, AF0091
 
-### Default analysis set (`analysis_samples`, provisional, ≥6 timepoints)
+### Shared default sample set (`analysis_samples`)
 
-| condition | subjects | 4/4 | 5/5 | samples |
-|---|---|---|---|---|
-| Sleep Extension | 24 | 11 | 13 | 221 |
-| Sleep Restriction | 24 | 11 | 13 | 217 |
+Decided 2026-11-11 (issue #10). **Default:** Sleep Extension, subjects with ≥6 timepoints, because a 3-parameter cosinor copes with one or two missing points and stricter filtering mainly costs power. **`strict=True`** applies the original authors' rule as a sensitivity analysis. **`for_phase_analysis=True`** also drops AF0182 in SE, whose `circadian_phase_h` labels are inconsistent (§8); AF0182 stays in clock-time analyses because its clock times are real. Part 2 (#2) checks these defaults.
 
-### Comparison with the original authors' time-series filter
+| condition | call | subjects | 4/4 | 5/5 | samples | excluded |
+|---|---|---|---|---|---|---|
+| Sleep Extension | default (main analysis) | 24 | 11 | 13 | 221 | AF0079, AF0091 |
+| Sleep Extension | strict=True (sensitivity) | 20 | 9 | 11 | 193 | AF0079, AF0091, AF0112, AF0182, AF0186, AF0267 |
+| Sleep Extension | for_phase_analysis=True | 23 | 11 | 12 | 214 | AF0079, AF0091, AF0182 |
+| Sleep Extension | strict + phase | 20 | 9 | 11 | 193 | AF0079, AF0091, AF0112, AF0182, AF0186, AF0267 |
+| Sleep Restriction | default (SR sensitivity) | 24 | 11 | 13 | 217 | AF0186, AF0295 |
+| Sleep Restriction | strict=True | 20 | 9 | 11 | 190 | AF0033, AF0112, AF0122, AF0186, AF0295, AF0318 |
 
-GEO `Sample_data_processing`: *"for time-series analyses, series with 2 consecutive or more than 2 missing time points were excluded."* Series that would fail that rule (the provisional `analysis_samples` keeps them; Part 2 decides):
+Exclusion reasons (Sleep Extension, `strict=True, for_phase_analysis=True`):
 
-| subject | condition | genotype | n_timepoints | missing | reason |
+| subject | per3_genotype | sleep_condition | n_timepoints | missing_timepoints | reason |
 |---|---|---|---|---|---|
-| AF0033 | SR | 4/4 | 7 | T1,T5,T6 | >2 missing |
-| AF0112 | SE | 4/4 | 7 | T3,T7,T10 | >2 missing |
-| AF0112 | SR | 4/4 | 6 | T2,T3,T4,T8 | >2 missing |
-| AF0122 | SR | 5/5 | 6 | T2,T5,T9,T10 | >2 missing |
-| AF0182 | SE | 5/5 | 7 | T1,T2,T6 | >2 missing |
-| AF0186 | SE | 4/4 | 6 | T1,T3,T9,T10 | >2 missing |
-| AF0267 | SE | 5/5 | 8 | T2,T3 | 2 consecutive missing |
-| AF0318 | SR | 5/5 | 8 | T5,T6 | 2 consecutive missing |
+| AF0079 | 4/4 | Sleep Extension | 0 | all | no Sleep Extension samples |
+| AF0091 | 5/5 | Sleep Extension | 0 | all | no Sleep Extension samples |
+| AF0112 | 4/4 | Sleep Extension | 7 | T3,T7,T10 | authors' rule (strict): >2 missing timepoints |
+| AF0182 | 5/5 | Sleep Extension | 7 | T1,T2,T6 | authors' rule (strict): >2 missing timepoints; circadian_phase_h labels inconsistent: T4 (02:25) and T5 (04:25) are both -3 h; T4 implies phase 0 two hours earlier than the rest of the series |
+| AF0186 | 4/4 | Sleep Extension | 6 | T1,T3,T9,T10 | authors' rule (strict): >2 missing timepoints |
+| AF0267 | 5/5 | Sleep Extension | 8 | T2,T3 | authors' rule (strict): 2 consecutive missing |
 
-- SE under the authors' rule: 20 subjects (9 × 4/4, 11 × 5/5)
-- SR under the authors' rule: 20 subjects (9 × 4/4, 11 × 5/5)
+### Probe selection: one probe per gene
+
+Default since issue #10: `select_probes(method="max_mean")` keeps, for each gene, the probe with the **highest mean expression across all 438 samples**. It is used by `load_clock_genes()` and `collapse_probes_to_genes()`. Averaging probes (`collapse="mean"`) is still available. Averaging would mix near-background probes into the signal (PER3 17478: mean log2 3.86, minimum 1.21). The rule ignores time, rhythmicity and genotype, so it cannot bias the rhythm or genotype tests. Saved to `results/tables/selected_probes.csv`.
+
+| gene | probe_id | probe_name | mean_log2 | sd_log2 | min_log2 | max_log2 | selected |
+|---|---|---|---|---|---|---|---|
+| ARNTL | 9332 | A_23_P162037 | 10.506 | 0.322 | 9.313 | 11.395 | True |
+| CLOCK | 26609 | A_23_P419038 | 5.957 | 0.355 | 4.834 | 7.336 | True |
+| CRY1 | 4759 | A_23_P36665 | 6.291 | 0.392 | 4.913 | 7.627 | False |
+| CRY1 | 22736 | A_24_P407235 | 6.441 | 0.503 | 4.057 | 8.955 | True |
+| NR1D1 | 31697 | A_24_P250227 | 6.473 | 0.361 | 5.323 | 8.582 | False |
+| NR1D1 | 33493 | A_23_P420873 | 8.597 | 0.372 | 7.516 | 9.73 | True |
+| NR1D2 | 29554 | A_24_P943472 | 7.337 | 0.528 | 5.469 | 8.972 | False |
+| NR1D2 | 38683 | A_23_P302709 | 8.918 | 0.337 | 7.966 | 9.863 | True |
+| PER1 | 3881 | A_23_P89589 | 8.297 | 0.355 | 6.527 | 9.747 | True |
+| PER2 | 16821 | A_23_P209320 | 8.601 | 0.317 | 7.466 | 10.213 | True |
+| PER2 | 25311 | A_23_P411162 | 5.283 | 0.418 | 4.023 | 6.222 | False |
+| PER3 | 17478 | A_24_P291231 | 3.864 | 0.901 | 1.214 | 6.39 | False |
+| PER3 | 25341 | A_23_P201461 | 5.509 | 0.509 | 4.146 | 8.033 | True |
+| PER3 | 43131 | A_24_P230948 | 4.227 | 0.719 | 2.145 | 8.183 | False |
 
 ## 7. Series matrix (whole transcriptome)
 
