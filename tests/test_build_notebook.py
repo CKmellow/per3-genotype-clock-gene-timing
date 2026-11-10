@@ -36,6 +36,20 @@ def test_build_produces_valid_ordered_notebook(tmp_path):
     assert all(not c.get("outputs") for c in code)
 
 
+def test_build_is_deterministic(tmp_path):
+    a, b = tmp_path / "a.ipynb", tmp_path / "b.ipynb"
+    build_notebook.main(["-o", str(a)])
+    build_notebook.main(["-o", str(b)])
+    assert a.read_bytes() == b.read_bytes()
+
+
+def test_committed_final_notebook_is_up_to_date(tmp_path):
+    out = tmp_path / "final.ipynb"
+    build_notebook.main(["-o", str(out)])
+    committed = config.ROOT / "notebooks" / "PER3_clock_timing.ipynb"
+    assert out.read_text() == committed.read_text(), "run: python scripts/build_notebook.py"
+
+
 def test_every_stage_has_bootstrap_first_and_heading():
     for p in build_notebook.stage_paths():
         nb = nbformat.read(p, as_version=4)

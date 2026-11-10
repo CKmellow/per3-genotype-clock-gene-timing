@@ -43,7 +43,9 @@ git push -u origin feat/part-3-cosinor
 gh pr create --base main --fill      # or use the GitHub website
 ```
 - Write `Closes #<your issue number>` in the PR description and fill in the checklist.
-- Wait for CI to go green and ask a teammate to review. Merge with **Squash and merge**, then delete the branch.
+- Wait for CI to go green and ask a teammate to review.
+- **Review requests should be answered within 12 hours; tag the reviewer in the PR.**
+- Merge with **Squash and merge**. The branch is deleted automatically after merging.
 - Keep PRs small. Several PRs per part are fine.
 - If `main` moved on, update your branch: `git switch main && git pull && git switch - && git merge main`.
 
@@ -52,6 +54,8 @@ Open `https://colab.research.google.com/github/CKmellow/per3-genotype-clock-gene
 
 ## 6. Rules
 - Don't invent data, results or citations. If something can't be verified, say so in the notebook and the PR.
+- Report negative or inconclusive results honestly, with their uncertainty. The brief asks for what the data does **and does not** show.
+- Use the shared defaults (`data.analysis_samples()`, one probe per gene). To change them, open a PR against `data.py` with the justification (see `data/README.md`).
 - Don't change the research question or objectives. Raise concerns in the issue.
 - Use `config.SEED` / `config.set_seeds()` for anything random.
 - Ask before anything destructive (force-push, deleting branches or files, rewriting history).

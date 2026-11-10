@@ -18,8 +18,18 @@ University bioinformatics group project (deadline **18 Nov 2026**).
 
 **Data.** GEO [GSE39445](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE39445) (Möller-Levet et al. 2013, *PNAS*): whole-blood transcriptome (Agilent GPL15331), 26 participants (12 × PER3 4/4, 14 × 5/5), ~10 samples every 3 h across ~40 h of wakefulness, after a week of sufficient sleep ("Sleep Extension", **main analysis**) and of insufficient sleep ("Sleep Restriction", **sensitivity analysis only**). See [`data/README.md`](data/README.md).
 
-## Deliverable
-One notebook, [`notebooks/PER3_clock_timing.ipynb`](notebooks/PER3_clock_timing.ipynb), that runs top-to-bottom in Google Colab with outputs saved. It is **generated** from the stage notebooks in `notebooks/stages/` by `scripts/build_notebook.py`. Do not edit it by hand.
+## Deliverables (from the lecturer's brief)
+| # | Deliverable | Who | Format | Content |
+|---|---|---|---|---|
+| 1 | **Notebook (GitHub link)** | group | [`notebooks/PER3_clock_timing.ipynb`](notebooks/PER3_clock_timing.ipynb) | Runs **top to bottom in Google Colab, with outputs saved**, with interpretations and conclusions. Stages 1–8 in order, each with a heading and a short interpretation of our own results. |
+| 2 | **Reflection** | **each member individually** | PDF, **max 1 page** | Your role in the project, challenges you experienced, achievements gained. Personal: submit it yourself and **don't commit it here** (the repo is public). |
+| 3 | **Presentation** | group | to be communicated by the lecturer | What we did and found. |
+
+The final notebook is **generated** from the stage notebooks in `notebooks/stages/` by `scripts/build_notebook.py`. Do not edit it by hand.
+
+**Reporting rule (brief, learning outcome 7):** report what the data does **and does not** show. Negative or inconclusive findings are valid results. Report them with their uncertainty (effect size and 95% CI), and never overstate what ~12 subjects per genotype can show.
+
+**Shared defaults:** every stage uses `per3clock.data.analysis_samples()` (Sleep Extension, ≥6 timepoints: 24 subjects, 221 samples; `strict=True` = authors' rule, 20 subjects, sensitivity; `for_phase_analysis=True` drops AF0182 SE for melatonin-phase analyses) and one probe per gene (highest mean expression, outcome-blind). See [`data/README.md`](data/README.md#shared-defaults-issue-10-decided-2026-11-11).
 
 | Stage | Notebook | Part | Owner |
 |---|---|---|---|
