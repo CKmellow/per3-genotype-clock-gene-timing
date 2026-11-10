@@ -65,7 +65,7 @@ Values are the GEO **quantile-normalised log2 signal** (unitless). Log2 is infer
 | `ENSEMBL_ID` | Ensembl transcript/gene ID where available. |
 | `CHROMOSOMAL_LOCATION` | Agilent chromosomal coordinates of the probe. |
 
-All 43,758 matrix probes are present. 30,505 carry a symbol, giving 19,541 unique genes. Multiple probes per gene are common, so use `collapse_probes_to_genes()`.
+All 43,758 matrix probes are present. 30,505 carry a symbol, giving 19,541 unique genes. Multiple probes per gene are common, so use `collapse_probes_to_genes()`, which keeps one probe per gene by default (see *Shared defaults*).
 
 ### `GSE39445.txt` (GEO SOFT sample headers)
 
@@ -85,15 +85,55 @@ Tab-separated: header lines `!Series_*` / `!Sample_*`, then a table `ID_REF × G
 | `clock_time_h` | `clock_time` as decimal hours in [0, 24), e.g. `0:15` → 0.25. |
 | `is_recovered` | True for the 11 samples whose subject/genotype were recovered. |
 
-`load_clock_genes()` returns the long format: one row per sample × gene with columns `expression` (probe mean by default) and `n_probes`, plus all of the metadata above.
+`load_clock_genes()` returns the long format: one row per sample × gene with `expression` from the **selected probe** (`probe_id`), `n_probes` (the number of candidates), plus all of the metadata above.
+
+## Shared defaults (issue #10, decided 2026-11-11)
+
+These are defaults so Parts 3–5 work from the same data. Part 2 (#2) checks them and may propose changes in its own PR, with justification.
+
+### Sample set: `analysis_samples()`
+
+| Call (Sleep Extension) | Subjects | 4/4 | 5/5 | Samples | Use for |
+|---|---|---|---|---|---|
+| `analysis_samples()` | 24 | 11 | 13 | 221 | **main analysis** (clock-time acrophases, objectives 1–2) |
+| `analysis_samples(strict=True)` | 20 | 9 | 11 | 193 | sensitivity analysis: the original authors' rule |
+| `analysis_samples(for_phase_analysis=True)` | 23 | 11 | 12 | 214 | anything that uses `circadian_phase_h` (objective 3, Part 5 target) |
+| `analysis_samples(strict=True, for_phase_analysis=True)` | 20 | 9 | 11 | 193 | strict sensitivity for the phase analysis |
+| `analysis_samples("Sleep Restriction")` | 24 | 11 | 13 | 217 | SR sensitivity analysis (`strict=True`: 20 subjects, 190 samples) |
+
+- **Default rule: ≥6 of 10 timepoints.** A 3-parameter cosinor copes well with one or two missing points. The authors' stricter rule mainly throws away power we cannot afford with ~12 subjects per genotype, so it is the sensitivity analysis.
+- **`strict=True`** drops series with 2 consecutive or more than 2 missing timepoints (GEO processing note). In SE that removes AF0112, AF0182, AF0186 and AF0267.
+- **`for_phase_analysis=True`** drops AF0182 in Sleep Extension, whose `circadian_phase_h` labels are inconsistent (Known issues 5). Its **clock times are real**, so AF0182 stays in clock-time analyses. Its Sleep Restriction phase labels are consistent, so it is kept there.
+- `analysis_samples(..., return_exclusions=True)` also returns a table (`subject, per3_genotype, sleep_condition, n_timepoints, missing_timepoints, reason`) for notebooks to print.
+
+### Probe selection: one probe per gene
+
+`select_probes(expr, annot, method="max_mean")` keeps, for each gene, the probe with the **highest mean expression across all 438 samples**. It is the default in `load_clock_genes()` and `collapse_probes_to_genes()`. `collapse="mean"` (average all probes) remains available as a sensitivity option.
+
+- **Why:** some probes are near background. PER3 probe 17478 has a mean log2 of 3.86 (minimum 1.21), and 43131 has 4.23, while the selected PER3 probe 25341 has 5.51. Averaging them in dilutes the signal.
+- **Why it is safe:** the rule uses only each probe's overall mean. It ignores time, rhythmicity, genotype and condition. Choosing the most rhythmic probe, or the one that best separates genotypes, would be circular and would bias results toward finding rhythms or genotype effects.
+- Selected clock-gene probes (all candidates and means: `results/tables/selected_probes.csv`):
+
+| Gene | Selected probe | Mean log2 | Not used (mean log2) |
+|---|---|---|---|
+| PER2 | 16821 (A_23_P209320) | 8.60 | 25311 (5.28) |
+| PER3 | 25341 (A_23_P201461) | 5.51 | 43131 (4.23), 17478 (3.86) |
+| NR1D1 | 33493 (A_23_P420873) | 8.60 | 31697 (6.47) |
+| CLOCK | 26609 | 5.96 | none |
+| CRY1 | 22736 (A_24_P407235) | 6.44 | 4759 (6.29) |
+| ARNTL | 9332 | 10.51 | none |
+| PER1 | 3881 | 8.30 | none |
+| NR1D2 | 38683 (A_23_P302709) | 8.92 | 29554 (7.34) |
+
+PER3 is still the weakest primary gene on this array: its selected probe is at the 39th percentile of all probe means (whole-array median 6.70). Part 2 should confirm it is above background.
 
 ## Known issues and decisions
 
 1. **11 samples with blank subject/genotype (GSM1526434–GSM1526444).** These were added to GEO later. Their GEO records have no `subject` characteristic, and they store genotype under the key `genotype` instead of `genotype/variation`, so the CSV parse missed both. Subject is recovered from the title (`AF0033_SE_T2` → AF0033). Genotype is recovered from that subject's other samples and agrees with GEO's own `genotype` field for all 11 (tested).
 2. **Coverage.** The clock-gene CSV has all **438** samples. A line count reports 438 because the file has no trailing newline, so it looks like 437 data rows, but there are 438. The values are identical to the series matrix (max |difference| = 0).
 3. **Uneven sampling.** AF0079 and AF0091 have only SR samples. AF0186 and AF0295 have only SE samples. Several series miss timepoints (AF0186 SE has 6). Full table: `results/tables/timepoints_per_subject.csv`. For SE, 24 subjects (11 × 4/4, 13 × 5/5) and 221 samples are available.
-4. **Authors' time-series filter.** Applying GEO's rule (exclude series with 2 consecutive or >2 missing timepoints) would drop AF0112, AF0182, AF0186 and AF0267 from SE, leaving 20 subjects (9 × 4/4, 11 × 5/5). The provisional `analysis_samples()` keeps any series with ≥6 timepoints. **Part 2 decides.**
-5. **AF0182 SE timing anomaly (flagged, not fixed).** T4 (02:25) and T5 (04:25) both have `circadian_phase_h = −3`. The T3→T4 gap is 4 h and the T4→T5 gap is 2 h, against a protocol spacing of 3 h. The other AF0182 SE samples imply circadian phase 0 at 07:25 clock time, while T4 implies 05:25. T1, T2 and T6 are missing. This is probably an annotation error. Minor late draws: AF0186 SE T8 (+0.7 h) and AF0318 SE T10 (+0.67 h). List: `results/tables/sample_anomalies.csv`.
+4. **Authors' time-series filter.** GEO's rule (exclude series with 2 consecutive or >2 missing timepoints) drops AF0112, AF0182, AF0186 and AF0267 from SE, leaving 20 subjects (9 × 4/4, 11 × 5/5). It is applied by `analysis_samples(strict=True)` as the sensitivity analysis (see *Shared defaults*).
+5. **AF0182 SE timing anomaly (labels not modified; excluded from phase analyses via `for_phase_analysis=True`).** T4 (02:25) and T5 (04:25) both have `circadian_phase_h = −3`. The T3→T4 gap is 4 h and the T4→T5 gap is 2 h, against a protocol spacing of 3 h. The other AF0182 SE samples imply circadian phase 0 at 07:25 clock time, while T4 implies 05:25. T1, T2 and T6 are missing. This is probably an annotation error. Minor late draws: AF0186 SE T8 (+0.7 h) and AF0318 SE T10 (+0.67 h). List: `results/tables/sample_anomalies.csv`.
 6. **`circadian_phase_h` is binned.** It takes only 11 values in 3-h steps, so it is a protocol-bin assignment relative to each person's melatonin rhythm, not a continuous measurement. That limits the precision of melatonin-relative acrophases (Part 3, objective 3) and of the ML target (Part 5).
 7. **Definition of circadian phase 0: not fully verified.** The paper states that melatonin onset was determined for each participant and condition, that each RNA sample was assigned a circadian phase (details in the SI Methods), and that the time series were aligned with the **plasma melatonin** rhythm. We could not access the SI Methods. **Inference (not confirmed):** the implied clock time of phase 0, `clock_time_h − circadian_phase_h`, averages **04:10 (SE)** and **05:08 (SR)** across subjects. That closely matches the paper's reported mean **melatonin midpoints** (control 04:15, sleep restriction 05:01), so phase 0 is most likely the plasma-melatonin midpoint. Part 3 should confirm this in the SI before stating it. Differences between genotypes do not depend on this choice.
 8. **Phase vs clock time.** The implied clock time of circadian phase 0 is `clock_time_h − circadian_phase_h` (mod 24). Its per-subject value is a proxy for individual melatonin timing and can be used for objective 3.

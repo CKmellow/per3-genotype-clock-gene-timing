@@ -214,37 +214,46 @@ def main() -> None:
     w("- SE-only subjects: " + ", ".join(tp[tp.n_SR == 0].index.get_level_values(0)))
     w("- SR-only subjects: " + ", ".join(tp[tp.n_SE == 0].index.get_level_values(0)) + "\n")
 
-    w("### Default analysis set (`analysis_samples`, provisional, ≥6 timepoints)\n")
+    w("### Shared default sample set (`analysis_samples`)\n")
+    w("Decided 2026-11-11 (issue #10). **Default:** Sleep Extension, subjects with ≥6 timepoints, "
+      "because a 3-parameter cosinor copes with one or two missing points and stricter filtering "
+      "mainly costs power. **`strict=True`** applies the original authors' rule as a sensitivity "
+      "analysis. **`for_phase_analysis=True`** also drops AF0182 in SE, whose `circadian_phase_h` "
+      "labels are inconsistent (§8); AF0182 stays in clock-time analyses because its clock times "
+      "are real. Part 2 (#2) checks these defaults.\n")
     rows = []
-    for cond in config.CONDITIONS.values():
-        a = data.analysis_samples(cond, metadata=meta)
+    variants = [
+        ("Sleep Extension", {}, "default (main analysis)"),
+        ("Sleep Extension", {"strict": True}, "strict=True (sensitivity)"),
+        ("Sleep Extension", {"for_phase_analysis": True}, "for_phase_analysis=True"),
+        ("Sleep Extension", {"strict": True, "for_phase_analysis": True}, "strict + phase"),
+        ("Sleep Restriction", {}, "default (SR sensitivity)"),
+        ("Sleep Restriction", {"strict": True}, "strict=True"),
+    ]
+    for cond, kw, label in variants:
+        a, ex = data.analysis_samples(cond, metadata=meta, return_exclusions=True, **kw)
         sp = a.drop_duplicates("subject").per3_genotype.value_counts()
-        rows.append({"condition": cond, "subjects": a.subject.nunique(),
-                     "4/4": sp.get("4/4", 0), "5/5": sp.get("5/5", 0), "samples": len(a)})
+        rows.append({"condition": cond, "call": label, "subjects": a.subject.nunique(),
+                     "4/4": sp.get("4/4", 0), "5/5": sp.get("5/5", 0), "samples": len(a),
+                     "excluded": ", ".join(ex.subject)})
     w(md_table(pd.DataFrame(rows)) + "\n")
+    _, ex = data.analysis_samples(metadata=meta, strict=True, for_phase_analysis=True,
+                                  return_exclusions=True)
+    w("Exclusion reasons (Sleep Extension, `strict=True, for_phase_analysis=True`):\n")
+    w(md_table(ex) + "\n")
 
-    w("### Comparison with the original authors' time-series filter\n")
-    w("GEO `Sample_data_processing`: *\"for time-series analyses, series with 2 consecutive "
-      "or more than 2 missing time points were excluded.\"* Series that would fail that rule "
-      "(the provisional `analysis_samples` keeps them; Part 2 decides):\n")
-    fail = []
-    for (sj, code), g in meta.groupby(["subject", "condition_code"]):
-        missing = sorted(allt - set(g.timepoint_n))
-        consec = any(b - a == 1 for a, b in zip(missing, missing[1:], strict=False))
-        if len(missing) > 2 or consec:
-            fail.append({"subject": sj, "condition": code, "genotype": g.per3_genotype.iloc[0],
-                         "n_timepoints": len(g),
-                         "missing": ",".join(f"T{t}" for t in missing),
-                         "reason": ">2 missing" if len(missing) > 2 else "2 consecutive missing"})
-    fail_df = pd.DataFrame(fail)
-    w(md_table(fail_df) + "\n")
-    for code in ("SE", "SR"):
-        keep = meta[meta.condition_code == code].groupby("subject").first()
-        dropped = set(fail_df.loc[fail_df.condition == code, "subject"]) if len(fail_df) else set()
-        k = keep.drop(index=list(dropped))
-        w(f"- {code} under the authors' rule: {len(k)} subjects "
-          f"({(k.per3_genotype == '4/4').sum()} × 4/4, {(k.per3_genotype == '5/5').sum()} × 5/5)")
-    w("")
+    # ---- probe selection ------------------------------------------------------------
+    sel = data.clock_probe_selection()
+    sel.to_csv(config.TABLES_DIR / "selected_probes.csv", index=False)
+    w("### Probe selection: one probe per gene\n")
+    w("Default since issue #10: `select_probes(method=\"max_mean\")` keeps, for each gene, the "
+      "probe with the **highest mean expression across all 438 samples**. It is used by "
+      "`load_clock_genes()` and `collapse_probes_to_genes()`. Averaging probes "
+      "(`collapse=\"mean\"`) is still available. Averaging would mix near-background probes "
+      "into the signal (PER3 17478: mean log2 3.86, minimum 1.21). The rule ignores time, "
+      "rhythmicity and genotype, so it cannot bias the rhythm or genotype tests. Saved to "
+      "`results/tables/selected_probes.csv`.\n")
+    w(md_table(sel) + "\n")
 
     # ---- series matrix --------------------------------------------------------------
     w("## 7. Series matrix (whole transcriptome)\n")

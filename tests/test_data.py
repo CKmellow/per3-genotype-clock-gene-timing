@@ -94,11 +94,55 @@ def test_clock_genes_probe_level():
     assert p.groupby("gene")["probe_id"].nunique().to_dict()["PER3"] == 3
 
 
-def test_clock_gene_mean_collapse_consistent(clock):
+def test_clock_gene_mean_collapse_consistent():
     p = data.load_clock_genes(collapse=None)
     m = p.groupby(["sample_id", "gene"])["expression"].mean()
-    c = clock.set_index(["sample_id", "gene"])["expression"]
+    c = data.load_clock_genes(collapse="mean").set_index(["sample_id", "gene"])["expression"]
     pd.testing.assert_series_equal(m.sort_index(), c.sort_index(), check_names=False)
+
+
+# --- probe selection ----------------------------------------------------------------------
+SELECTED = {"ARNTL": 9332, "CLOCK": 26609, "CRY1": 22736, "NR1D1": 33493, "NR1D2": 38683,
+            "PER1": 3881, "PER2": 16821, "PER3": 25341}
+
+
+def test_default_clock_genes_use_one_probe_per_gene(clock):
+    assert clock.groupby("gene")["probe_id"].unique().map(lambda a: a[0]).to_dict() == SELECTED
+    p = data.load_clock_genes(collapse=None).set_index(["sample_id", "probe_id"])["expression"]
+    c = clock.set_index(["sample_id", "probe_id"])["expression"]
+    pd.testing.assert_series_equal(c.sort_index(), p.loc[c.index].sort_index(), check_names=False)
+
+
+def test_per3_low_probes_not_selected():
+    sel = data.clock_probe_selection().set_index("probe_id")
+    assert sel.loc[25341, "selected"] and not sel.loc[[17478, 43131], "selected"].any()
+    assert sel.groupby("gene")["selected"].sum().eq(1).all()
+    # selected = highest mean within each gene
+    best = sel.reset_index().loc[lambda d: d.groupby("gene")["mean_log2"].idxmax(), "probe_id"]
+    assert set(best) == set(SELECTED.values())
+
+
+def test_select_probes_toy_and_tie_break():
+    annot = pd.DataFrame({"GENE_SYMBOL": ["A", "A", "B", "B", np.nan]},
+                         index=pd.Index([1, 2, 3, 4, 5], name="ID"))
+    expr = pd.DataFrame({"s1": [1.0, 3.0, 5.0, 5.0, 99.0], "s2": [1.0, 3.0, 5.0, 5.0, 99.0]},
+                        index=[1, 2, 3, 4, 5])
+    sel = data.select_probes(expr, annot)
+    assert sel["probe_id"].to_dict() == {"A": 2, "B": 3}  # tie -> lowest ID; no-symbol ignored
+    assert sel.loc["A", "n_candidates"] == 2
+    with pytest.raises(ValueError):
+        data.select_probes(expr, annot, method="most_rhythmic")
+
+
+def test_select_probes_is_outcome_blind():
+    """Selection depends only on per-probe means: shuffling sample order (i.e. any
+    relabelling of time, genotype or condition) must not change it."""
+    rng = np.random.default_rng(0)
+    annot = pd.DataFrame({"GENE_SYMBOL": list("AABBBC")}, index=range(6))
+    expr = pd.DataFrame(rng.normal(6, 1, (6, 40)), index=range(6))
+    a = data.select_probes(expr, annot)
+    b = data.select_probes(expr.sample(frac=1, axis=1, random_state=1), annot)
+    pd.testing.assert_frame_equal(a, b)
 
 
 def test_clock_values_look_log2(clock):
@@ -122,26 +166,62 @@ def test_collapse_probes_to_genes_small():
     expr = pd.DataFrame(vals, index=[1, 2, 3, 4])
     mean = data.collapse_probes_to_genes(expr, annot, "mean")
     assert mean.loc["A"].tolist() == [2.0, 2.0] and "nan" not in mean.index.astype(str)
-    mx = data.collapse_probes_to_genes(expr, annot, "max_mean")
-    assert mx.loc["A"].tolist() == [3.0, 2.0]
+    mx = data.collapse_probes_to_genes(expr, annot)  # default = max_mean
+    assert mx.loc["A"].tolist() == [3.0, 2.0] and list(mx.index) == ["A", "B"]
     with pytest.raises(ValueError):
         data.collapse_probes_to_genes(expr, annot, "sum")
 
 
 # --- analysis set -----------------------------------------------------------------------
-def test_analysis_samples_se(meta):
+def _summary(s):
+    gt = s.drop_duplicates("subject")["per3_genotype"].value_counts().to_dict()
+    return s["subject"].nunique(), gt.get("4/4", 0), gt.get("5/5", 0), len(s)
+
+
+def test_analysis_samples_default(meta):
     s = data.analysis_samples(metadata=meta)
     assert set(s["sleep_condition"]) == {"Sleep Extension"}
-    assert s["subject"].nunique() == 24 and len(s) == 221
-    assert s.drop_duplicates("subject")["per3_genotype"].value_counts().to_dict() == {
-        "5/5": 13,
-        "4/4": 11,
-    }
+    assert _summary(s) == (24, 11, 13, 221)
+    assert "AF0182" in set(s["subject"])  # real clock times -> kept for clock-time analyses
+
+
+def test_analysis_samples_strict(meta):
+    s, excl = data.analysis_samples(metadata=meta, strict=True, return_exclusions=True)
+    assert _summary(s) == (20, 9, 11, 193)
+    strict_out = excl[excl["reason"].str.contains("authors' rule")]["subject"]
+    assert set(strict_out) == {"AF0112", "AF0182", "AF0186", "AF0267"}
+
+
+def test_analysis_samples_for_phase_analysis(meta):
+    s, excl = data.analysis_samples(metadata=meta, for_phase_analysis=True,
+                                    return_exclusions=True)
+    assert _summary(s) == (23, 11, 12, 214)
+    assert "AF0182" not in set(s["subject"])
+    assert excl.set_index("subject").loc["AF0182", "reason"].startswith("circadian_phase_h")
+    both = data.analysis_samples(metadata=meta, strict=True, for_phase_analysis=True)
+    assert _summary(both) == (20, 9, 11, 193)
+
+
+def test_phase_exclusion_only_where_labels_are_bad(meta):
+    # AF0182's Sleep Restriction phase labels are consistent, so it stays there
+    sr = data.analysis_samples("Sleep Restriction", metadata=meta, for_phase_analysis=True)
+    assert "AF0182" in set(sr["subject"])
+
+
+def test_analysis_exclusions_table(meta):
+    s, excl = data.analysis_samples(metadata=meta, return_exclusions=True)
+    assert list(excl.columns) == ["subject", "per3_genotype", "sleep_condition", "n_timepoints",
+                                  "missing_timepoints", "reason"]
+    assert set(excl["subject"]) == {"AF0079", "AF0091"}  # no SE samples at all
+    assert set(s["subject"]).isdisjoint(excl["subject"])
+    assert s["subject"].nunique() + len(excl) == 26
 
 
 def test_analysis_samples_sr(meta):
     s = data.analysis_samples("Sleep Restriction", metadata=meta)
-    assert s["subject"].nunique() == 24 and len(s) == 217
+    assert _summary(s) == (24, 11, 13, 217)
+    assert _summary(data.analysis_samples("Sleep Restriction", metadata=meta, strict=True)) == (
+        20, 9, 11, 190)
 
 
 def test_analysis_samples_bad_condition():
