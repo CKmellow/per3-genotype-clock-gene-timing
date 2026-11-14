@@ -17,6 +17,15 @@ def test_save_fig(tmp_path, monkeypatch):
     plt.close(fig)
 
 
+def test_save_fig_dpi(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "FIGURES_DIR", tmp_path)
+    fig, ax = plt.subplots(figsize=(2, 1))
+    lo = plotting.save_fig(fig, "lo", dpi=100).stat().st_size
+    hi = plotting.save_fig(fig, "hi", dpi=300).stat().st_size
+    assert hi > lo
+    plt.close(fig)
+
+
 def test_save_fig_rejects_paths():
     with pytest.raises(ValueError):
         plotting.save_fig(None, "sub/dir")
