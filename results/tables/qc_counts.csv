@@ -1,0 +1,10 @@
+step,samples,subjects,subjects_4_4,subjects_5_5,samples_SE,samples_SR,features
+"1 GEO series matrix (all samples, all probes)",438,26,12,14,221,217,43758
+2 probes with a gene symbol,438,26,12,14,221,217,30505
+3 one probe per gene (shared default),438,26,12,14,221,217,19541
+"4 Sleep Extension, >=6 timepoints (main set)",221,24,11,13,221,0,19541
+5 expression filter (main set),221,24,11,13,221,0,17528
+6 sample outliers removed (none: flagged only),221,24,11,13,221,0,17528
+sensitivity: strict=True,193,20,9,11,193,0,17528
+sensitivity: for_phase_analysis=True,214,23,11,12,214,0,17528
+sensitivity: Sleep Restriction (SE gene set),217,24,11,13,0,217,17528

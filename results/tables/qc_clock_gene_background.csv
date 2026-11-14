@@ -1,0 +1,9 @@
+gene,mean_log2,min_log2,frac_above_threshold,array_percentile,passes_filter
+PER2,8.6517,7.6984,1.0,59.5159,True
+PER3,5.4554,4.2062,1.0,29.891,True
+NR1D1,8.6142,7.5161,1.0,59.086,True
+CLOCK,5.95,5.0182,1.0,33.5193,True
+CRY1,6.4877,4.0566,1.0,38.0226,True
+ARNTL,10.5167,9.3129,1.0,79.8936,True
+PER1,8.3012,6.5268,1.0,55.6778,True
+NR1D2,8.9284,7.9658,1.0,62.6324,True

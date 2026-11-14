@@ -47,7 +47,9 @@ def test_committed_final_notebook_is_up_to_date(tmp_path):
     out = tmp_path / "final.ipynb"
     build_notebook.main(["-o", str(out)])
     committed = config.ROOT / "notebooks" / "PER3_clock_timing.ipynb"
-    assert out.read_text() == committed.read_text(), "run: python scripts/build_notebook.py"
+    # explicit UTF-8: the default locale encoding on Windows (cp1252) cannot decode ≈, →, ²
+    assert out.read_text(encoding="utf-8") == committed.read_text(encoding="utf-8"), (
+        "run: python scripts/build_notebook.py")
 
 
 def test_every_stage_has_bootstrap_first_and_heading():

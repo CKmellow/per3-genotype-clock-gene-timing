@@ -36,7 +36,9 @@ def set_style() -> None:
     )
 
 
-def save_fig(fig: plt.Figure | None, name: str, *, fmt: str = "png") -> Path:
+def save_fig(
+    fig: plt.Figure | None, name: str, *, fmt: str = "png", dpi: float | None = None
+) -> Path:
     """Save ``fig`` (or the current figure) to ``results/figures/<name>.<fmt>``.
 
     Parameters
@@ -47,6 +49,9 @@ def save_fig(fig: plt.Figure | None, name: str, *, fmt: str = "png") -> Path:
         File stem, e.g. ``"eda_clock_gene_profiles"``. No directories or extension.
     fmt : str
         File format (default ``"png"``).
+    dpi : float, optional
+        Resolution; default is the style's ``savefig.dpi`` (200). Use 300 for
+        report figures.
 
     Returns
     -------
@@ -57,5 +62,5 @@ def save_fig(fig: plt.Figure | None, name: str, *, fmt: str = "png") -> Path:
     config.FIGURES_DIR.mkdir(parents=True, exist_ok=True)
     fig = fig if fig is not None else plt.gcf()
     path = config.FIGURES_DIR / f"{name}.{fmt}"
-    fig.savefig(path)
+    fig.savefig(path, **({} if dpi is None else {"dpi": dpi}))
     return path
