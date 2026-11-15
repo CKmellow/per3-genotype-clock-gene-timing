@@ -86,3 +86,48 @@ def test_rhythmicity_scan_contract():
     out = rhythm.rhythmicity_scan(expr, meta)
     assert {"amplitude", "acrophase_h", "p", "q"} <= set(out.columns)
     assert out.loc["RHY", "q"] < 0.05 < out.loc["FLAT", "q"]
+
+
+def _synthetic_subjects(n_subjects=8, phases=None, seed=0):
+    rng = np.random.default_rng(seed)
+    meta, cols = [], {}
+    for s in range(n_subjects):
+        for i, t in enumerate(np.arange(-12, 15, 3.0)):
+            sid = f"S{s}_{i}"
+            meta.append({"sample_id": sid, "subject": f"S{s}", "sleep_condition": "Sleep Extension",
+                         "circadian_phase_h": t})
+            cols[sid] = t
+    meta = pd.DataFrame(meta)
+    t = meta["circadian_phase_h"].to_numpy()
+    subj = meta["subject"].str[1:].astype(int).to_numpy()
+    level = rng.normal(0, 2, n_subjects)[subj]          # large between-subject levels
+    random_phase = rng.uniform(0, 24, n_subjects)[subj]
+    expr = pd.DataFrame({
+        "CONSISTENT": 6 + level + np.cos(2 * np.pi * (t - 4) / 24),
+        "RANDOM_PHASE": 6 + level + np.cos(2 * np.pi * (t - random_phase) / 24),
+        "FLAT": 6 + level,
+    }).T + rng.normal(0, 0.2, (3, len(t)))
+    expr.columns = meta["sample_id"]
+    return expr, meta
+
+
+def test_rhythmicity_scan_population_mean_cosinor():
+    expr, meta = _synthetic_subjects()
+    out = rhythm.rhythmicity_scan(expr, meta)
+    assert out.loc["CONSISTENT", "q"] < 0.001
+    assert abs(out.loc["CONSISTENT", "acrophase_h"] - 4) < 0.5
+    assert out.loc["CONSISTENT", "amplitude"] == pytest.approx(1, abs=0.15)
+    # rhythmic in every subject but with no common phase: not a population rhythm
+    assert out.loc["RANDOM_PHASE", "p"] > 0.01
+    assert out.loc["FLAT", "q"] > 0.05
+    assert (out["n_subjects"] == 8).all() and (out["n"] == len(meta)).all()
+
+
+def test_rhythmicity_scan_guards():
+    expr, meta = _synthetic_subjects()
+    bad = meta.assign(subject=meta["subject"].replace("S0", "AF0182"))
+    with pytest.raises(ValueError, match="for_phase_analysis"):
+        rhythm.rhythmicity_scan(expr, bad)
+    mixed = meta.assign(sleep_condition=["Sleep Restriction"] * 9 + ["Sleep Extension"] * 63)
+    with pytest.raises(ValueError, match="sleep_condition"):
+        rhythm.rhythmicity_scan(expr, mixed)
