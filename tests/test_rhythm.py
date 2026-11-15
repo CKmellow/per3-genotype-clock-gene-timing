@@ -5,7 +5,6 @@ import pytest
 from per3clock import data, rhythm
 
 
-
 def _circ_err(a, b, period=24.0):
     d = (a - b) % period
     return min(d, period - d)

@@ -4,7 +4,6 @@ import pytest
 from per3clock import circstats
 
 
-
 def test_circular_mean_wraps():
     assert circstats.circular_mean_h([23, 1]) == pytest.approx(0, abs=1e-9) or \
         circstats.circular_mean_h([23, 1]) == pytest.approx(24, abs=1e-9)

@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import warnings
+
 import numpy as np
 from scipy import stats
+
 from . import config
 
 
@@ -93,7 +95,8 @@ def watson_williams_test(
         warnings.warn(
             "Low pooled circular concentration; Watson-Williams "
             "results may be unreliable.",
-            RuntimeWarning
+            RuntimeWarning,
+            stacklevel=2
         )
 
     if np.ptp(group_rbar) > 0.20:
@@ -101,7 +104,8 @@ def watson_williams_test(
             "Group concentrations differ considerably; the "
             "Watson-Williams equal-concentration assumption may "
             "not hold.",
-            RuntimeWarning
+            RuntimeWarning,
+            stacklevel=2
         )
 
     numerator = (n_total - n_groups) * (
