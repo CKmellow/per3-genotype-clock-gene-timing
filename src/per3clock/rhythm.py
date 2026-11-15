@@ -95,24 +95,60 @@ def fit_subject_cosinors(
     period: float = config.PERIOD_H,
     min_points: int = 6,
 ) -> pd.DataFrame:
-    """Fit one cosinor per subject × condition × gene (Part 3).
+    """Fit one cosinor per subject, condition and gene."""
 
-    Parameters
-    ----------
-    clock_long : output of ``per3clock.data.load_clock_genes()`` (optionally filtered
-        to ``analysis_samples()``).
-    time_col : ``"clock_time_h"`` (objectives 1–2) or ``"circadian_phase_h"``
-        (objective 3). Note clock time wraps at midnight. Use an unwrapped time or
-        rely on the periodic model (cosinor is invariant to adding multiples of T).
-    min_points : skip series with fewer valid samples.
+    required = [
+        "subject", "per3_genotype", "sleep_condition",
+        "gene", time_col, "expression"
+    ]
 
-    Returns
-    -------
-    DataFrame, one row per subject × sleep_condition × gene, columns
-    ``subject, per3_genotype, sleep_condition, gene, time_col, mesor, amplitude,
-    acrophase_h, r2, p, n``.
-    """
-    raise NotImplementedError("Part 3: implement fit_subject_cosinors")
+    missing = [col for col in required if col not in clock_long.columns]
+    if missing:
+        raise ValueError(f"Missing required columns: {missing}")
+
+    selected = clock_long[clock_long["gene"].isin(genes)].copy()
+    results = []
+
+    group_columns = ["subject", "sleep_condition", "gene"]
+
+    for (subject, condition, gene), group in selected.groupby(
+        group_columns, sort=False
+    ):
+        times = pd.to_numeric(group[time_col], errors="coerce").to_numpy()
+        values = pd.to_numeric(group["expression"], errors="coerce").to_numpy()
+
+        valid = np.isfinite(times) & np.isfinite(values)
+
+        if valid.sum() < min_points:
+            continue
+
+        fit = cosinor_fit(
+            times[valid],
+            values[valid],
+            period=period
+        )
+
+        results.append({
+            "subject": subject,
+            "per3_genotype": group["per3_genotype"].iloc[0],
+            "sleep_condition": condition,
+            "gene": gene,
+            "time_col": time_col,
+            "mesor": fit["mesor"],
+            "amplitude": fit["amplitude"],
+            "acrophase_h": fit["acrophase_h"],
+            "r2": fit["r2"],
+            "p": fit["p"],
+            "n": fit["n"]
+        })
+
+    columns = [
+        "subject", "per3_genotype", "sleep_condition", "gene",
+        "time_col", "mesor", "amplitude", "acrophase_h",
+        "r2", "p", "n"
+    ]
+
+    return pd.DataFrame(results, columns=columns)
 
 
 def rhythmicity_scan(
@@ -139,4 +175,82 @@ def rhythmicity_scan(
     How subjects are combined (pooled fit, per-subject then meta-analysis, or
     mixed model) is Part 3's decision. Document it.
     """
-    raise NotImplementedError("Part 3: implement rhythmicity_scan")
+    # Match expression columns to metadata sample IDs.
+    if "sample_id" not in meta.columns:
+        raise ValueError("meta must contain a sample_id column")
+
+    sample_ids = [
+        sample_id for sample_id in expr.columns
+        if sample_id in set(meta["sample_id"])
+    ]
+
+    if not sample_ids:
+        raise ValueError("No matching sample IDs between expr and meta")
+
+    meta_indexed = meta.drop_duplicates("sample_id").set_index("sample_id")
+    aligned_meta = meta_indexed.reindex(sample_ids)
+
+    if time_col not in aligned_meta.columns:
+        raise ValueError(f"Time column '{time_col}' not found in metadata")
+
+    times = pd.to_numeric(aligned_meta[time_col], errors="coerce").to_numpy()
+
+    results = []
+
+    # Fit one pooled cosinor model for each gene.
+    for gene in expr.index:
+        values = pd.to_numeric(
+            expr.loc[gene, sample_ids], errors="coerce"
+        ).to_numpy(dtype=float)
+
+        valid = np.isfinite(times) & np.isfinite(values)
+
+        if valid.sum() < 4:
+            continue
+
+        try:
+            fit = cosinor_fit(
+                times[valid],
+                values[valid],
+                period=period
+            )
+        except ValueError:
+            continue
+
+        results.append({
+            "gene": gene,
+            "mesor": fit["mesor"],
+            "amplitude": fit["amplitude"],
+            "acrophase_h": fit["acrophase_h"],
+            "r2": fit["r2"],
+            "p": fit["p"],
+            "n": fit["n"]
+        })
+
+    if not results:
+        raise ValueError("No genes had enough valid samples for cosinor fitting")
+
+    result_df = pd.DataFrame(results).set_index("gene")
+
+    # Benjamini-Hochberg false discovery rate correction.
+    p_values = result_df["p"].to_numpy()
+    number_of_tests = len(p_values)
+
+    order = np.argsort(p_values)
+    sorted_p = p_values[order]
+
+    adjusted = sorted_p * number_of_tests / np.arange(
+        1, number_of_tests + 1
+    )
+
+    # Enforce monotonicity of adjusted p-values.
+    adjusted = np.minimum.accumulate(adjusted[::-1])[::-1]
+    adjusted = np.clip(adjusted, 0, 1)
+
+    q_values = np.empty(number_of_tests)
+    q_values[order] = adjusted
+
+    result_df["q"] = q_values
+
+    return result_df.sort_values("q")
+
