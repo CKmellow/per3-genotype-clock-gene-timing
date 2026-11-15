@@ -1,0 +1,4 @@
+min_amplitude,n_genes,n_terms_q05,top_3_terms,kegg_circadian_overlap,kegg_circadian_q
+0.2,2007,10,Cytoplasmic Translation | Ribosome | Coronavirus disease,7/80,0.9999927461906696
+0.1,7037,22,Ribosome | Cytoplasmic Translation | Translation,32/80,0.9895043103790617
+0.0,9577,29,Ribosome | Translation | Cytoplasmic Translation,16/28,0.751775555253106
