@@ -4,7 +4,6 @@ import pytest
 
 from per3clock import data, rhythm
 
-part3 = pytest.mark.xfail(reason="Part 3", strict=True, raises=NotImplementedError)
 
 
 def _circ_err(a, b, period=24.0):
@@ -66,7 +65,6 @@ def test_cosinor_other_period():
 
 
 # --- Part 3 contracts ---------------------------------------------------------------------
-@part3
 def test_fit_subject_cosinors_contract():
     clock = data.load_clock_genes()
     clock = clock[clock.sample_id.isin(data.analysis_samples().sample_id)]
@@ -78,7 +76,6 @@ def test_fit_subject_cosinors_contract():
     assert out["acrophase_h"].between(0, 24, inclusive="left").all()
 
 
-@part3
 def test_rhythmicity_scan_contract():
     rng = np.random.default_rng(0)
     meta = data.analysis_samples().head(60)
