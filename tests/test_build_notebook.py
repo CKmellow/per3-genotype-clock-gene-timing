@@ -47,9 +47,14 @@ def test_committed_final_notebook_is_up_to_date(tmp_path):
     out = tmp_path / "final.ipynb"
     build_notebook.main(["-o", str(out)])
     committed = config.ROOT / "notebooks" / "PER3_clock_timing.ipynb"
+    # Compare cell types and sources only: the committed notebook keeps the outputs of
+    # its Colab/local run (brief: "outputs saved"), which a fresh build does not have.
     # explicit UTF-8: the default locale encoding on Windows (cp1252) cannot decode ≈, →, ²
-    assert out.read_text(encoding="utf-8") == committed.read_text(encoding="utf-8"), (
-        "run: python scripts/build_notebook.py")
+    def cells(path):
+        nb = nbformat.reads(path.read_text(encoding="utf-8"), as_version=4)
+        return [(c.cell_type, c.source) for c in nb.cells]
+
+    assert cells(out) == cells(committed), "run: python scripts/build_notebook.py [--execute]"
 
 
 def test_every_stage_has_bootstrap_first_and_heading():
