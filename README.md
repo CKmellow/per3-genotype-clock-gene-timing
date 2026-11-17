@@ -18,6 +18,14 @@ University bioinformatics group project (deadline **18 Nov 2026**).
 
 **Data.** GEO [GSE39445](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE39445) (Möller-Levet et al. 2013, *PNAS*): whole-blood transcriptome (Agilent GPL15331), 26 participants (12 × PER3 4/4, 14 × 5/5), ~10 samples every 3 h across ~40 h of wakefulness, after a week of sufficient sleep ("Sleep Extension", **main analysis**) and of insufficient sleep ("Sleep Restriction", **sensitivity analysis only**). See [`data/README.md`](data/README.md).
 
+## Main findings
+- **Answer:** no detectable shift in peak time between PER3 4/4 and 5/5 carriers. 5/5 carriers peak 0.5–1.4 h earlier on clock time (NR1D1 −1.2 h [95% CI −3.1, +0.7], PER2 −0.5 h [−2.6, +1.7], PER3 −1.4 h [−6.3, +2.9]; all q = 0.66), and the tendency disappears relative to melatonin phase. With 11–13 people per group this is **inconclusive**, not proof of no effect. The hypothesis is not supported.
+- The earliness of 5/5 carriers (wake time −1.2 h, melatonin −1.25 h) belongs to the whole sleep–circadian system, not to clock-gene timing relative to the internal clock. Across the 14-gene clock network: −1.0 h [−3.5, +0.6] on clock time, −0.04 h on phase.
+- Blood has a strong daily programme: 2,007 rhythmic genes, largely from white-cell traffic (naive T cells at night, NK cells and monocytes by day).
+- Machine learning: internal phase is predicted for a new person with ~1 h median error. Expression adds a small but consistent 0.4 h over clock time alone (18/23 people improved, p = 0.0001). PER3 genotype adds nothing.
+
+Figure: [`results/figures/conclusions_genotype_shifts.png`](results/figures/conclusions_genotype_shifts.png). Full reasoning and limitations: Stage 8 of the notebook.
+
 ## Deliverables (from the lecturer's brief)
 | # | Deliverable | Who | Format | Content |
 |---|---|---|---|---|
