@@ -24,6 +24,10 @@ University bioinformatics group project (deadline **18 Nov 2026**).
 - Blood has a strong daily programme: 2,007 rhythmic genes, largely from white-cell traffic (naive T cells at night, NK cells and monocytes by day).
 - Machine learning: internal phase is predicted for a new person with ~1 h median error. Expression adds a small but consistent 0.4 h over clock time alone (18/23 people improved, p = 0.0001). PER3 genotype adds nothing.
 
+**Live demo:** [`notebooks/PER3_live_demo.ipynb`](notebooks/PER3_live_demo.ipynb) ([open in Colab](https://colab.research.google.com/github/CKmellow/per3-genotype-clock-gene-timing/blob/feat/live-demo/notebooks/PER3_live_demo.ipynb)): a short interactive version for the presentation (one person's rhythm, genotype comparison, phase prediction for a held-out person). Run all once before the talk, then each demo cell takes a few seconds.
+
+**Dashboard:** [`app/streamlit_app.py`](app/streamlit_app.py), an interactive Streamlit dashboard of the results. Run `pip install -e ".[app]"` then `streamlit run app/streamlit_app.py`.
+
 Figure: [`results/figures/conclusions_genotype_shifts.png`](results/figures/conclusions_genotype_shifts.png). Full reasoning and limitations: Stage 8 of the notebook.
 
 ## Deliverables (from the lecturer's brief)
