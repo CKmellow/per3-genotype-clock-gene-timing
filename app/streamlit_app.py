@@ -23,7 +23,8 @@ COLORS = {"4/4": C44, "5/5": C55}
 LABELS = {"4/4": "4/4 · night owl", "5/5": "5/5 · early bird"}
 MAIN_GENES = ["NR1D1", "PER2", "PER3"]
 TIME_BASES = {"Clock time": "clock_time", "Melatonin time": "circadian_phase"}
-INK, MUTED, GRID = "#1f2937", "#6b7280", "#e5e7eb"
+INK, MUTED, GRID = "#e5e7eb", "#9ca3af", "#263247"
+BG, CARD = "#0b1220", "#111a2e"
 FONT = "Inter, system-ui, -apple-system, Segoe UI, sans-serif"
 
 st.set_page_config(
@@ -54,8 +55,8 @@ html, body, [class*="css"] {{ font-family: {FONT}; }}
   font-weight: 600; margin-right: 6px; }}
 .p44 {{ background: rgba(213,94,0,.18); color: #ffb98a; }}
 .p55 {{ background: rgba(0,114,178,.25); color: #9fd4ff; }}
-.kpi {{ background: #fff; border: 1px solid {GRID}; border-radius: 14px; padding: 16px 18px;
-  height: 100%; box-shadow: 0 1px 2px rgba(16,24,40,.04); }}
+.kpi {{ background: {CARD}; border: 1px solid {GRID}; border-radius: 14px; padding: 16px 18px;
+  height: 100%; box-shadow: 0 1px 3px rgba(0,0,0,.35); }}
 .kpi .label {{ color: {MUTED}; font-size: .8rem; font-weight: 600; text-transform: uppercase;
   letter-spacing: .05em; }}
 .kpi .value {{ color: {INK}; font-size: 1.9rem; font-weight: 700; margin: 4px 0 2px; }}
@@ -64,7 +65,7 @@ html, body, [class*="css"] {{ font-family: {FONT}; }}
 .kpi.warn {{ border-top: 4px solid {C44}; }}
 .kpi.ok {{ border-top: 4px solid #009E73; }}
 .kpi.neutral {{ border-top: 4px solid #6b7280; }}
-.note {{ background: #f8fafc; border-left: 4px solid {C55}; border-radius: 8px;
+.note {{ background: {CARD}; border-left: 4px solid {C55}; border-radius: 8px;
   padding: 12px 16px; color: {INK}; font-size: .93rem; }}
 .section {{ font-size: 1.15rem; font-weight: 700; color: {INK}; margin: 8px 0 2px; }}
 .subtle {{ color: {MUTED}; font-size: .88rem; margin-bottom: 6px; }}
@@ -113,11 +114,13 @@ def signed(x: float, d: int = 2) -> str:
 
 def style(fig: go.Figure, height: int = 420, **kw) -> go.Figure:
     layout = dict(
-        template="plotly_white",
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
         height=height,
         font=dict(family=FONT, color=INK, size=13),
         margin=dict(t=30, b=40, l=10, r=10),
-        hoverlabel=dict(font_family=FONT, bgcolor="white"),
+        hoverlabel=dict(font_family=FONT, bgcolor=CARD, font_color=INK),
         legend=dict(orientation="h", y=1.1, x=0),
     )
     layout.update(kw)
@@ -329,7 +332,7 @@ with tabs[0]:
                 + "<br>shift %{x:+.2f} h [%{customdata[1]:+.2f}, "
                 "%{customdata[2]:+.2f}]<br>q = %{customdata[3]:.2f}<extra></extra>",
             )
-        fig.add_vrect(x0=-1, x1=1, fillcolor="#f3f4f6", line_width=0, layer="below")
+        fig.add_vrect(x0=-1, x1=1, fillcolor="rgba(255,255,255,0.06)", line_width=0, layer="below")
         fig.add_vline(x=0, line_color=MUTED, line_dash="dot")
         fig.update_yaxes(tickvals=[0, 1, 2], ticktext=MAIN_GENES[::-1])
         fig.update_xaxes(title="Shift in peak time (h)")
@@ -364,7 +367,7 @@ with tabs[1]:
             mode="markers",
             name=gname,
             legendgroup=gname,
-            marker=dict(size=10, color=col, line=dict(width=1, color="white")),
+            marker=dict(size=10, color=col, line=dict(width=1, color=BG)),
             customdata=np.c_[d.clock_time_h.map(hhmm), d.hours_awake],
             hovertemplate=f"<b>{gname}</b> · %{{customdata[0]}} · "
             "%{customdata[1]} h awake<br>%{y:.2f} log2<extra></extra>",
@@ -476,7 +479,7 @@ with tabs[2]:
                     color=COLORS[gt],
                     line=dict(
                         width=[3 if s == person else 1 for s in x.subject],
-                        color=[INK if s == person else "white" for s in x.subject],
+                        color=[INK if s == person else BG for s in x.subject],
                     ),
                 ),
                 customdata=np.c_[x.subject, x.acrophase_h.map(hhmm), x.r2],
@@ -496,7 +499,7 @@ with tabs[2]:
         tick = [f"{h:02d}:00" if tb == "clock_time" else f"{h}h" for h in range(0, 24, 3)]
         fig.update_layout(
             polar=dict(
-                bgcolor="#fbfcfe",
+                bgcolor="rgba(255,255,255,0.02)",
                 radialaxis=dict(visible=False, range=[0, 1.12]),
                 angularaxis=dict(
                     direction="clockwise",
@@ -620,7 +623,7 @@ with tabs[2]:
                 marker=dict(
                     size=[16 if s == person else 11 for s in d.subject],
                     color=COLORS[gt],
-                    line=dict(width=1, color="white"),
+                    line=dict(width=1, color=BG),
                 ),
                 customdata=np.c_[d.subject, d.wake_clock_h.map(hhmm), d.phase0_clock_h.map(hhmm)],
                 hovertemplate="<b>%{customdata[0]}</b><br>woke %{customdata[1]}"
@@ -804,7 +807,7 @@ with tabs[4]:
                 y=q.step.str.replace(r"^\d+ ", "", regex=True),
                 x=q.features,
                 texttemplate="%{value:,}",
-                marker_color=["#1d4e7a", "#24609a", C55, "#3b8fd0", "#56B4E9", "#86cbee"][: len(q)],
+                marker_color=["#24609a", "#2b74b5", C55, "#3b8fd0", "#56B4E9", "#86cbee"][: len(q)],
                 customdata=np.c_[q.samples, q.subjects],
                 hovertemplate="%{y}<br>%{x:,} features · %{customdata[0]} samples · "
                 "%{customdata[1]} people<extra></extra>",
@@ -820,7 +823,7 @@ with tabs[4]:
         d = d[d.PC.str.startswith("PC")]
         fig = go.Figure()
         for col, lab, c in [
-            ("subject", "Person", "#1d4e7a"),
+            ("subject", "Person", "#56B4E9"),
             ("timepoint", "Time point", C44),
             ("circadian_phase_h", "Melatonin phase", "#E69F00"),
             ("per3_genotype", "Genotype", "#009E73"),
@@ -888,7 +891,7 @@ with tabs[4]:
         )
     fig.update_layout(
         polar=dict(
-            bgcolor="#fbfcfe",
+            bgcolor="rgba(255,255,255,0.02)",
             radialaxis=dict(gridcolor=GRID, angle=90, tickfont=dict(size=10)),
             angularaxis=dict(
                 direction="clockwise",
